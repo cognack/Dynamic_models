@@ -1,0 +1,99 @@
+---
+title: "08_wk_Predator_Prey_models"
+author: "Steven Cognac"
+date: '2022-05-17'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(deSolve)
+library(sensitivity)
+library(here)
+library(patchwork)
+
+source(here("R/lotvmod.R"))
+source(here("R/lotvmodK.R"))
+```
+
+
+```{r initial_conditions}
+# note the use of with
+# initial conditions
+currpop = c(prey=10, pred=1)
+
+# time points to see results
+days = seq(from=1, to=200, by=1)
+
+# set parameters
+pars = c(rprey=0.2, alpha=0.3, eff=0.2,pmort=0.2, K=100)
+
+# run the model
+res = ode(func=lotvmod, y=currpop, times=days, parms=pars)
+
+# graph the results
+head(res)
+```
+
+```{r pred_prey_plot}
+ressimple = as.data.frame(res) %>% 
+  gather(key="animal", value="pop",-time)
+
+p1 <- ggplot(ressimple, aes(time, pop, col=animal)) +
+  geom_line()
+
+p1
+
+```
+
+```{r}
+p2 <- ggplot(as.data.frame(res), aes(pred, prey)) +
+  geom_point()
+
+p2
+```
+
+```{r}
+p1 + p2
+```
+
+
+## Predator-Prey with carrying capacity
+
+```{r}
+# initial conditions
+currpop=c(prey=1, pred=1)
+
+# set parameter list
+pars = c(rprey=0.1, alpha=0.6, eff=0.8,pmort=0.4, K=20)
+
+# times when you want to evaluate
+days = seq(from=1,to=500)
+
+# run our differential equation solver
+res = ode(func=lotvmodK, y=currpop, times=days, parms=pars)
+
+# estract the results
+ressimple = as.data.frame(res) %>% gather(key="species", value="pop",-time)
+```
+
+```{r}
+# graph both populations over time
+p3 <- ggplot(ressimple, aes(time, pop, col=species)) +
+  geom_line()
+p3
+```
+
+```{r}
+# also look at relationships between preditor and prey population and use color for time 
+# I will remove the legend here to make it easier to see 
+
+p4 <- ggplot(as.data.frame(res), aes(pred, prey, col=as.factor(round(time/10))))+
+  geom_point() +
+  theme(legend.position = "none")
+p4
+```
+
+

@@ -13,7 +13,7 @@ library(purrr)
 library(here)
 ```
 
-Dynammic models always involves derivatives (equations that express how things change from time step to time step or place to place )
+Dynamic models always involves derivatives (equations that express how things change from time step to time step or place to place )
 
 # Derivates 
 

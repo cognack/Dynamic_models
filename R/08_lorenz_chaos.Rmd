@@ -1,0 +1,67 @@
+---
+title: "08_lorenze_equations_chaos"
+author: "Steven Cognac"
+date: '2022-05-17'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(here)
+library(deSolve)
+library(patchwork)
+
+source(here("R/lorenz.R"))
+```
+
+Lorenz Equations (for fluid dynamics), P, R, B are parameters (fixed values), x,y,z variables that change with time that describe how conveciton in the atmosphere works - a cell that is warmed from below and cooled from above
+
+Developed by Meteorologist Edward Lorenz - early climate model development in 1960s
+
+ - fluid convection
+ - x rate of convective overturning
+ - y departure from linear horizontal temperature gradient
+ - z departure from linear vertical temperature difference
+ 
+Lorenz equations are example of dynamic systems that can exhibit stable and chaotic states depending on parameters and initial conditions
+
+Lorenze equations useful when you want to model tiny changes in a system and how they can lead to major shifts in systems.
+
+```{r}
+# lorenze
+pars = list(a=10,b=28,c=8/3)
+res = ode(func=lorenz, c(x=0.1,y=0,z=0), times=seq(0,50,by=0.01), parms=pars)
+
+x_change <- ggplot(as.data.frame(res), aes(x,y, col=time)) +
+  geom_point() +
+  theme(legend.position = "none")
+```
+
+
+```{r}
+y_change <- ggplot(as.data.frame(res), aes(x,z, col=time)) +
+  geom_point() +
+  theme(legend.position = "none")
+
+```
+
+```{r}
+z_change <- ggplot(as.data.frame(res), aes(y,z, col=time)) +
+  geom_point()
+```
+
+```{r}
+x_change + y_change + z_change
+
+```
+
+
+```{r}
+ressimple = as.data.frame(res) %>% gather(key="var", value="value",-time)
+
+ggplot(ressimple, aes(time, value, col=var)) +
+  geom_line()
+```
+

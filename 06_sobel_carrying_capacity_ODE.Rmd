@@ -1,0 +1,77 @@
+---
+title: "population_growth_ODE_carraying_capacity"
+author: "Steven Cognac"
+date: '2022-05-10'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(deSolve)
+library(sensitivity)
+library(here)
+
+source(here("R/dexppopK.R"))
+```
+
+
+```{r}
+# want to learn about sensitivity to growth rate (r) and carrying capacity 
+# set the number of parameters
+np=100
+K = rnorm(mean=300, sd=50, n=np)
+r = rnorm(mean=0.01, sd=0.005, n=np)
+X1 = cbind.data.frame(r=r, K=K)
+
+# repeat to get our second set of samples
+K = rnorm(mean=300, sd=50, n=np)
+r = rnorm(mean=0.01, sd=0.005, n=np)
+X2 = cbind.data.frame(r=r, K=K)
+
+sens_P = sobolSalt(model = NULL,X1, X2, nboot = 300)
+
+# our parameter sets are
+head(sens_P$X)
+```
+
+```{r}
+# lets add names 
+colnames(sens_P$X) = c("r","K")
+
+# I may re-use this function so I saved it as a file 
+# maxyear doesn't make sense for a growth that slows gradually - so I'll use year when population doubles
+source("../R/compute_pop_metrics.R")
+
+Pinitial = 100
+
+# I continually update the wrapper to I'll keep in inline
+# you could make it a separate file as well 
+simtimes=seq(from=1, to=500, by=5)
+
+p_wrapper = function(r,K, Pinitial, simtimes, func, metrics_func) {
+    parms = list(r=r, K=K)
+    result = ode(y=Pinitial, times=simtimes, func=func, parms=parms) 
+    colnames(result)=c("time","P")
+    
+  # get metrics
+    metrics = as.data.frame(result) %>% 
+      metrics_func()
+  return(metrics)
+}
+
+allresults <- as.data.frame(sens_P$X) %>% 
+  pmap(p_wrapper, 
+       Pinitial = Pinitial, 
+       simtimes = simtimes, 
+       func = dexppopK, 
+       metrics_func = compute_pop_metrics)
+```
+
+
+
+
+
+
+

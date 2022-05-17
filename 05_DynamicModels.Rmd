@@ -1,0 +1,186 @@
+---
+title: "DynamicModels"
+author: "Steven Cognac"
+date: '2022-05-03'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(deSolve)
+library(here)
+library(tidyverse)
+
+source(here("R/dexppop.R"))
+```
+
+# additional parameters 
+
+You can play a bit with changing your function to something that you can't integrate "by hand"
+
+BUT we might want more parameters
+
+to work with ODE,
+parameters must all be input as a single list; similar to how we return multiple outputs from a function
+
+see example below..lets add a carrying capacity
+
+# R code with carrying capacity
+
+
+```{r}
+initialrabbits = 20
+
+years = seq(from=1, to=100, by=2)
+
+# run the solver
+Ptime = ode(y = initialrabbits,
+            times = years,
+            func = dexppop,
+            parms = c(0.01))
+
+# not exactly a dataframe
+head(Ptime)
+```
+```{r}
+colnames(Ptime)=c("year","P")
+```
+
+```{r}
+# this also means you need to extract just the data frame for plotting
+ggplot(as.data.frame(Ptime),aes(year,P)) +
+  geom_point() + 
+  labs(y = "Population",
+       "years")
+```
+
+```{r}
+# this also works (of course function can be by order)
+Ptime = ode(initialrabbits, years, dexppop,0.03)
+
+colnames(Ptime) = c("year","P")
+
+ggplot(as.data.frame(Ptime),aes(year,P)) + 
+  geom_point() +
+  labs(y = "Population",
+       x = "years")
+```
+
+
+# Difference Equations 
+
+What is ODE doing? (iterating in 'smart ways')
+
+Similar to "difference equations"
+
+## Difference Equations
+
+Population models can be discrete (rather than continuous)
+So we could implement them as difference equations and iterate
+
+
+```{r iteratie}
+source(here("R/discrete_logistic_pop.R"))
+
+# notice how a for loop is used to iterate
+# how many rabbits after 50 years given a growth of 0.1
+# starting with 1 rabbit - but a carrying capcity of 500
+discrete_logistic_pop
+discrete_logistic_pop(P0=1, r=0.05, K=200, T=50)
+
+# save results
+discrete_result = discrete_logistic_pop(P0=1, r=0.05, K=200, T=50)
+
+# lets also keep the parameters for use later
+P0=1
+r=0.05
+K=200
+T=50
+```
+
+# Differential Equation, Difference (Iteration by hand) comparison
+
+Remember we have 3 ways now to calculate population
+
+analytical solution - based on integration (exppop.R) BEST
+
+using an ode solver for numerical approximation (exppop_play.R)
+
+numerical integration using in discrete steps (discrete_logistic_pop.R)
+```{r closed}
+source(here("R/exppop.R"))
+
+exppop(P0=P0, r=r, K=K, T=T)
+analytic_result = exppop(P0=P0, r=r, K=K, T=T)
+analytic_result
+discrete_result
+
+# why are they different
+# look at trajectories
+growth_result = data.frame(time=seq(from=1,to=100))
+
+growth_result$Panalytic = growth_result$time %>% 
+  map_dbl(~exppop( P0=1,
+                   r=0.05,
+                   K=200,
+                   T=.x ))
+
+growth_result$Pdiscrete = growth_result$time %>%
+  map_dbl(~discrete_logistic_pop(P0=1,
+                                 r=0.05,
+                                 K=200,
+                                 T=.x ))
+
+tmp = growth_result %>% 
+  gather(key="Ptype",value="P",-time)
+
+ggplot(tmp, aes(time,P, col=Ptype)) +
+  geom_point()
+# try running them for longer time periods to see what happens 
+# change the value of r, K , P0 - see how it effects the results
+```
+
+# Compare analytical, difference and ODE
+
+Finally look at continuous derivative using ODE solve
+Needs
+*initial condtions
+*differential equation
+*parameters
+
+```{r}
+source(here("R/dexppop_play.R"))
+
+# set up using the same parameters
+pcompare = list(r=r,carry_capacity=K)
+
+# now run our ODE solver
+result = ode(P0, growth_result$time, dexppop_play, pcompare)
+head(result)
+
+# we already have time - so just extract population
+growth_result$Pdifferential = result[,2]
+
+# comapre all 3 approaches
+tmp = growth_result %>% 
+  gather(key="Ptype",value="P",-time)
+
+ggplot(tmp, aes(time,P, col=Ptype)) +
+  geom_point()
+# notice Pdifferential is closer to Panalytic than Pdiscrete
+```
+
+```{r}
+# create parameter list
+initalrabbits=2
+newparms = list(r=0.03, carry_capacity=300)
+
+#apply solver
+results = ode(initialrabbits, years, dexppop_play,newparms)
+head(results)
+
+```
+
+
+
